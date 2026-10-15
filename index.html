@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gym Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<link rel="stylesheet" href="style.css"></head><body>
+<nav><button data-t="log" class="on">Log</button><button data-t="prog">Progress</button><button data-t="data">Data</button></nav>
+<main>
+<section id="log">
+<label>Date<input type="date" id="date"></label>
+<label>Exercise<select id="ex"></select></label>
+<div id="newex" hidden><input id="newname" placeholder="New exercise name"><label class="c"><input type="checkbox" id="newbw"> Bodyweight</label></div>
+<div class="row"><label id="wl">Weight (lbs)<input type="number" id="w" step="0.5" inputmode="decimal"></label><label>Reps<input type="number" id="r" step="0.5" inputmode="decimal"></label></div>
+<label>Side<select id="side"><option value="">Both / n.a.</option><option>each</option><option>L</option><option>R</option></select></label>
+<div class="row"><label class="c"><input type="checkbox" id="f"> Failed last rep</label><label class="c"><input type="checkbox" id="a"> Assisted</label></div>
+<label>Notes<input id="n"></label>
+<button id="add" class="big">Add set</button>
+<p id="msg"></p>
+<h3>Sets on this date</h3><ul id="list"></ul>
+</section>
+<section id="prog" hidden>
+<label>Exercise<select id="pex"></select></label>
+<div id="stats"></div><div id="chart"></div>
+<h3>Weekly volume (lbs × reps)</h3><table id="weeks"></table>
+</section>
+<section id="data" hidden>
+<p id="info"></p>
+<label class="file">Import CSV<input type="file" id="imp" accept=".csv,text/csv"></label>
+<button id="exp" class="big">Export CSV (backup)</button>
+<p class="hint">Data lives only in this browser. Export regularly.</p>
+</section>
+</main>
+<script src="lib/dexie.min.js"></script><script src="app.js"></script>
+</body></html>
