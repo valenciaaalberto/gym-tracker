@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Gym">
 <link rel="stylesheet" href="style.css"></head><body>
-<nav><button data-t="log" class="on">Log</button><button data-t="prog">Progress</button><button data-t="data">Data</button></nav>
+<nav><button data-t="log" class="on">Log</button><button data-t="hist">History</button><button data-t="prog">Progress</button><button data-t="data">Data</button></nav>
 <main>
 <section id="log">
 <label>Date<input type="date" id="date"></label>
@@ -20,6 +20,10 @@
 <button id="add" class="big">Add set</button>
 <p id="msg"></p>
 <h3>Sets on this date</h3><ul id="list"></ul>
+</section>
+<section id="hist" hidden>
+<label>Exercise<select id="hex"></select></label>
+<div id="hlist"></div><button id="more" class="big">Show more</button>
 </section>
 <section id="prog" hidden>
 <label>Exercise<select id="pex"></select></label>

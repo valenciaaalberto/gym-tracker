@@ -12,7 +12,7 @@ async function loadEx(){
   const o=exs.map(e=>`<option>${esc(e.name)}</option>`).join('');
   const cur=$('#ex').value,pc=$('#pex').value;
   $('#ex').innerHTML=o+'<option value="__new">+ New exercise…</option>';
-  $('#pex').innerHTML=o;
+  $('#pex').innerHTML=o;const hv=$('#hex').value;$('#hex').innerHTML='<option value="">All exercises</option>'+o;$('#hex').value=hv;
   if(cur)$('#ex').value=cur;if(pc)$('#pex').value=pc;
   await onEx();
 }
@@ -71,6 +71,17 @@ async function prog(){
 }
 $('#pex').onchange=prog;
 
+let hn=20;
+async function hist(){
+  const f=$('#hex').value;let s=await db.sets.toArray();if(f)s=s.filter(x=>x.exercise===f);
+  const by={};s.forEach(x=>((by[x.date]??={})[x.exercise]??=[]).push(x));
+  const ds=Object.keys(by).sort().reverse();
+  const fmt=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  $('#hlist').innerHTML=ds.slice(0,hn).map(d=>`<h3>${fmt(d)}</h3>`+Object.entries(by[d]).map(([e,a])=>`<div class="stat"><span>${esc(e)}</span><b>${a.sort((x,y)=>x.set-y.set).map(x=>(x.weight!=null?x.weight+'×':'')+x.reps+(x.side?' '+x.side:'')+(x.failed?'✗':'')).join(', ')}</b></div>`).join('')).join('')||'<p class="hint">No sets yet.</p>';
+  $('#more').hidden=ds.length<=hn;
+}
+$('#hex').onchange=()=>{hn=20;hist()};$('#more').onclick=()=>{hn+=20;hist()};
+
 function parse(t){
   const r=[];let row=[],c='',q=0;
   for(let i=0;i<t.length;i++){const h=t[i];
@@ -109,7 +120,7 @@ async function info(){$('#info').textContent=`${await db.sets.count()} sets acro
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('main section').forEach(s=>s.hidden=s.id!==b.dataset.t);
-  if(b.dataset.t=='prog')prog();if(b.dataset.t=='data')info();
+  if(b.dataset.t=='hist')hist();if(b.dataset.t=='prog')prog();if(b.dataset.t=='data')info();
 });
 $('#date').value=today();
 loadEx().then(list).then(info);

@@ -15,6 +15,6 @@ button.big,.file{display:block;width:100%;padding:14px;margin:8px 0;background:v
 ul{list-style:none;padding:0}li{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
 li button{background:none;border:0;color:var(--mute);font-size:18px}
 h3{margin:24px 0 8px;font-size:17px}table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px solid var(--line)}td:last-child{text-align:right}
-.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}.stat b{font-weight:600}
+.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}.stat b{font-weight:600;text-align:right;max-width:65%}
 svg{width:100%;margin-top:12px}.t{fill:var(--mute);font-size:10px}
 .hint,#msg{color:var(--mute);font-size:14px}
