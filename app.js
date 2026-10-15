@@ -49,26 +49,53 @@ $('#add').onclick=async()=>{
 $('#ex').onchange=onEx;$('#newbw').onchange=onEx;$('#date').onchange=list;
 
 const wk=d=>{const t=new Date(d+'T12:00');t.setDate(t.getDate()-(t.getDay()+6)%7);return t.toISOString().slice(0,10)};
-function chart(p){
-  if(p.length<2)return'<p class="hint">Log at least two sessions to see a chart.</p>';
-  const W=320,H=150,P=26,v=p.map(x=>x[1]),mn=Math.min(...v),mx=Math.max(...v);
-  const X=i=>P+i*(W-2*P)/(p.length-1),Y=y=>H-P-(mx==mn?.5:(y-mn)/(mx-mn))*(H-2*P);
-  return`<svg viewBox="0 0 ${W} ${H}"><polyline fill="none" stroke="var(--ac)" stroke-width="2" points="${p.map((x,i)=>X(i)+','+Y(x[1])).join(' ')}"/>${p.map((x,i)=>`<circle cx="${X(i)}" cy="${Y(x[1])}" r="3" fill="var(--ac)"/>`).join('')}<text x="2" y="${P}" class="t">${mx}</text><text x="2" y="${H-P}" class="t">${mn}</text><text x="${P}" y="${H-6}" class="t">${p[0][0].slice(5)}</text><text x="${W-P}" y="${H-6}" class="t" text-anchor="end">${p.at(-1)[0].slice(5)}</text></svg>`;
+let P=[],sel=-1,rg=0;
+const st=x=>(x.weight!=null?x.weight+'×':'')+x.reps+(x.side?' '+x.side:'')+(x.failed?'✗':'');
+const dn=d=>Date.parse(d+'T12:00')/864e5;
+const dl=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+function chart(){
+  const cut=rg?dn(today())-rg:-Infinity,p=P.filter(x=>dn(x.d)>=cut);
+  if(!p.length)return'<p class="hint">No sessions in this range.</p>';
+  const W=340,H=210,L=42,R=12,T=12,B=26,v=p.map(x=>x.v);
+  let lo=Math.min(...v),hi=Math.max(...v);if(lo==hi){lo-=5;hi+=5}
+  const m=(hi-lo)/4,pw=10**Math.floor(Math.log10(m)),q=m/pw,step=(q<=1?1:q<=2?2:q<=5?5:10)*pw;
+  const y0=Math.floor(lo/step)*step,y1=Math.ceil(hi/step)*step,a=dn(p[0].d),b=dn(p.at(-1).d);
+  const Xn=t=>b==a?(L+W-R)/2:L+(t-a)/(b-a)*(W-L-R),Y=y=>H-B-(y-y0)/(y1-y0)*(H-T-B);
+  let g='';
+  for(let y=y0;y<=y1+1e-9;y+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(y)+3}" class="t" text-anchor="end">${Math.round(y*10)/10}</text>`;
+  const tk=b==a?[a]:[0,1/3,2/3,1].map(f=>a+f*(b-a));
+  g+=tk.map((t,i)=>`<text x="${Xn(t)}" y="${H-8}" class="t" text-anchor="${tk.length==1?'middle':i==0?'start':i==tk.length-1?'end':'middle'}">${new Date(t*864e5).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</text>`).join('');
+  g+=`<polyline fill="none" stroke="var(--ac)" stroke-width="2" points="${p.map(x=>Xn(dn(x.d))+','+Y(x.v)).join(' ')}"/>`;
+  g+=p.map(x=>{const i=P.indexOf(x),cx=Xn(dn(x.d)),cy=Y(x.v);return`<circle cx="${cx}" cy="${cy}" r="${i==sel?6:4}" fill="${i==sel?'var(--bg)':'var(--ac)'}" stroke="var(--ac)" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="14" fill="transparent" data-i="${i}"/>`}).join('');
+  return`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+function draw(){
+  $('#chart').innerHTML=chart();const x=P[sel];
+  $('#detail').innerHTML=x?`<div class="stat"><span>${dl(x.d)}</span><b>${x.sets.map(st).join(', ')}</b></div>`:'<p class="hint">Tap a point to see that day’s sets.</p>';
 }
 async function prog(){
-  const n=$('#pex').value;if(!n){$('#stats').innerHTML='<p class="hint">Log or import sets to see progress.</p>';$('#chart').innerHTML='';return}
-  const bw=isBw(n),s=await db.sets.where('exercise').equals(n).toArray(),key=bw?'reps':'weight';
-  const by={};s.filter(x=>x[key]!=null).forEach(x=>(by[x.date]??=[]).push(x));
-  const pts=Object.keys(by).sort().map(d=>[d,Math.max(...by[d].map(x=>x[key]))]);
+  const n=$('#pex').value;if(!n){$('#stats').innerHTML='<p class="hint">Log or import sets to see progress.</p>';$('#chart').innerHTML='';$('#detail').innerHTML='';return}
+  const bw=isBw(n),s=await db.sets.where('exercise').equals(n).toArray(),m=bw?'r':$('#met').value,key=bw?'reps':'weight';
+  $('#met').parentElement.hidden=!!bw;
+  const by={};s.forEach(x=>(by[x.date]??=[]).push(x));
+  P=Object.keys(by).sort().map(d=>{
+    const a=by[d].sort((x,y)=>x.set-y.set),w=a.filter(x=>x.weight!=null&&x.reps!=null);
+    const v=m=='r'?Math.max(...a.map(x=>x.reps)):m=='w'?Math.max(...w.map(x=>x.weight)):m=='e'?Math.max(...w.map(x=>x.weight*(1+x.reps/30))):w.reduce((t,x)=>t+x.weight*x.reps,0);
+    return{d,v:Math.round(v*10)/10,sets:a};
+  }).filter(x=>isFinite(x.v)&&x.v>0);
+  sel=-1;
   const best=[...s].filter(x=>x[key]!=null).sort((a,b)=>b[key]-a[key]||b.reps-a.reps)[0];
-  const e1=bw?null:Math.max(0,...s.filter(x=>x.weight).map(x=>x.weight*(1+x.reps/30)));
+  const e1=bw?0:Math.max(0,...s.filter(x=>x.weight).map(x=>x.weight*(1+x.reps/30)));
   const row=(a,b)=>`<div class="stat"><span>${a}</span><b>${b}</b></div>`;
-  $('#stats').innerHTML=row('Sessions',pts.length)+row('Total sets',s.length)+(best?row(bw?'Most reps in a set':'Heaviest set',bw?best.reps:`${best.weight} × ${best.reps} (${best.date})`):'')+(e1?row('Best estimated 1RM',Math.round(e1)+' lbs'):'');
-  $('#chart').innerHTML=chart(pts);
+  $('#stats').innerHTML=row('Sessions',P.length)+row('Total sets',s.length)+(best?row(bw?'Most reps in a set':'Heaviest set',bw?best.reps:`${best.weight} × ${best.reps} (${best.date})`):'')+(e1?row('Best estimated 1RM',Math.round(e1)+' lbs'):'');
+  draw();
   const all=await db.sets.toArray(),w={};
   all.forEach(x=>{if(x.weight!=null)w[wk(x.date)]=(w[wk(x.date)]||0)+x.weight*x.reps});
   $('#weeks').innerHTML=Object.keys(w).sort().reverse().slice(0,8).map(k=>`<tr><td>Week of ${k}</td><td>${Math.round(w[k]).toLocaleString()}</td></tr>`).join('');
 }
+$('#met').onchange=prog;
+$('#chart').onclick=e=>{const i=e.target.dataset.i;if(i!=null){sel=+i;draw()}};
+$('#rng').onclick=e=>{if(e.target.dataset.r==null)return;rg=+e.target.dataset.r;[...$('#rng').children].forEach(x=>x.classList.toggle('on',x===e.target));sel=-1;draw()};
 $('#pex').onchange=prog;
 
 let hn=20;

@@ -27,7 +27,10 @@
 </section>
 <section id="prog" hidden>
 <label>Exercise<select id="pex"></select></label>
-<div id="stats"></div><div id="chart"></div>
+<label>Chart shows<select id="met"><option value="w">Top-set weight (lbs)</option><option value="e">Estimated 1RM (lbs)</option><option value="v">Session volume (lbs × reps)</option></select></label>
+<div id="stats"></div>
+<div id="rng" class="seg"><button data-r="30">1M</button><button data-r="90">3M</button><button data-r="0" class="on">All</button></div>
+<div id="chart"></div><div id="detail"></div>
 <h3>Weekly volume (lbs × reps)</h3><table id="weeks"></table>
 </section>
 <section id="data" hidden>
