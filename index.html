@@ -10,8 +10,11 @@
 <nav><button data-t="log" class="on">Log</button><button data-t="hist">History</button><button data-t="prog">Progress</button><button data-t="data">Data</button></nav>
 <main>
 <section id="log">
+<div id="bk" class="bk" hidden><span id="bkt"></span><button id="bkb">Send backup</button></div>
 <label>Date<input type="date" id="date"></label>
 <label>Exercise<select id="ex"></select></label>
+<p id="last" class="hint"></p>
+<button id="rn" class="link">✎ Rename this exercise</button>
 <div id="newex" hidden><input id="newname" placeholder="New exercise name"><label class="c"><input type="checkbox" id="newbw"> Bodyweight</label></div>
 <div class="row"><label id="wl">Weight (lbs)<input type="number" id="w" step="0.5" inputmode="decimal"></label><label>Reps<input type="number" id="r" step="0.5" inputmode="decimal"></label></div>
 <label>Side<select id="side"><option value="">Both / n.a.</option><option>each</option><option>L</option><option>R</option></select></label>
@@ -19,7 +22,14 @@
 <label>Notes<input id="n"></label>
 <button id="add" class="big">Add set</button>
 <p id="msg"></p>
-<h3>Sets on this date</h3><ul id="list"></ul>
+<h3>Sets on this date (tap one to edit)</h3><ul id="list"></ul>
+<div id="ed" class="card" hidden><h3>Edit set</h3><p id="edt"></p>
+<label>Date<input type="date" id="ed_d"></label>
+<div class="row"><label>Weight<input type="number" id="ed_w" step="0.5" inputmode="decimal"></label><label>Reps<input type="number" id="ed_r" step="0.5" inputmode="decimal"></label></div>
+<label>Side<select id="ed_s"><option value="">Both / n.a.</option><option>each</option><option>L</option><option>R</option></select></label>
+<div class="row"><label class="c"><input type="checkbox" id="ed_f"> Failed last rep</label><label class="c"><input type="checkbox" id="ed_a"> Assisted</label></div>
+<label>Notes<input id="ed_n"></label><p id="edm" class="hint"></p>
+<div class="row"><button id="ed_save" class="big">Save</button><button id="ed_x" class="big sec">Cancel</button></div></div>
 </section>
 <section id="hist" hidden>
 <label>Exercise<select id="hex"></select></label>
@@ -36,7 +46,9 @@
 <section id="data" hidden>
 <p id="info"></p>
 <label class="file">Import CSV<input type="file" id="imp" accept=".csv,text/csv"></label>
-<button id="exp" class="big">Export CSV (backup)</button>
+<button id="shr" class="big">Email / share backup</button><button id="exp" class="big sec">Download CSV</button>
+<label>Backup reminder<select id="bkf"><option value="0">Off</option><option value="7">Weekly</option><option value="14">Every 2 weeks</option><option value="30">Monthly</option></select></label>
+<h3>Rename exercise</h3><label>Exercise<select id="rex"></select></label><label>New name<input id="rname"></label><button id="ren" class="big">Rename</button>
 <p class="hint">Data lives only in this browser. Export regularly.</p>
 </section>
 </main>

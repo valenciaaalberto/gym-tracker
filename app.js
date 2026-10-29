@@ -12,26 +12,28 @@ async function loadEx(){
   const o=exs.map(e=>`<option>${esc(e.name)}</option>`).join('');
   const cur=$('#ex').value,pc=$('#pex').value;
   $('#ex').innerHTML=o+'<option value="__new">+ New exercise…</option>';
-  $('#pex').innerHTML=o;const hv=$('#hex').value;$('#hex').innerHTML='<option value="">All exercises</option>'+o;$('#hex').value=hv;
+  $('#pex').innerHTML=o;$('#rex').innerHTML=o;const hv=$('#hex').value;$('#hex').innerHTML='<option value="">All exercises</option>'+o;$('#hex').value=hv;
   if(cur)$('#ex').value=cur;if(pc)$('#pex').value=pc;
   await onEx();
 }
 const isBw=n=>exs.find(e=>e.name===n)?.bodyweight;
 
 async function onEx(){
-  const n=$('#ex').value;$('#newex').hidden=n!=='__new';
-  const bw=n==='__new'?$('#newbw').checked:isBw(n);$('#wl').hidden=!!bw;
-  if(n&&n!=='__new'&&!bw){
-    const s=await db.sets.where('exercise').equals(n).sortBy('date');
-    const l=[...s].reverse().find(x=>x.weight!=null);if(l)$('#w').value=l.weight;
+  const n=$('#ex').value;$('#newex').hidden=n!=='__new';$('#rn').hidden=!n||n==='__new';
+  const bw=n==='__new'?$('#newbw').checked:isBw(n);
+  $('#wl').firstChild.textContent=bw?'Added weight (lbs, optional)':'Weight (lbs)';
+  let t='';
+  if(n&&n!=='__new'){
+    const s=await db.sets.where('exercise').equals(n).toArray();
+    if(s.length){const d=s.map(x=>x.date).sort().pop();t=`Last time (${dl(d)}): `+s.filter(x=>x.date===d).sort((a,b)=>a.set-b.set).map(st).join(', ')}
   }
+  $('#last').textContent=t;
 }
-
 async function list(){
   const s=(await db.sets.where('date').equals($('#date').value).toArray()).sort((a,b)=>a.updated-b.updated);
-  $('#list').innerHTML=s.map(x=>`<li><span>${esc(x.exercise)}: ${x.weight!=null?x.weight+' × ':''}${x.reps}${x.side?' '+x.side:''}${x.failed?' ✗':''}${x.assisted?' (assisted)':''}</span><button data-id="${x.id}" aria-label="Delete set">✕</button></li>`).join('')||'<li>No sets logged for this date yet.</li>';
+  $('#list').innerHTML=s.map(x=>`<li><span data-e="${x.id}">${esc(x.exercise)}: ${st(x)}${x.assisted?' (assisted)':''}</span><button data-id="${x.id}" aria-label="Delete set">✕</button></li>`).join('')||'<li>No sets logged for this date yet.</li>';
 }
-$('#list').onclick=async e=>{const id=e.target.dataset.id;if(id&&confirm('Delete this set?')){await db.sets.delete(id);list()}};
+$('#list').onclick=async e=>{if(e.target.dataset.e)return openEdit(e.target.dataset.e);const id=e.target.dataset.id;if(id&&confirm('Delete this set?')){await db.sets.delete(id);list()}};
 
 $('#add').onclick=async()=>{
   let n=$('#ex').value,bw;
@@ -40,9 +42,9 @@ $('#add').onclick=async()=>{
     if(!n)return msg('Enter a name for the new exercise.');
     await db.exercises.put({name:n,bodyweight:bw,updated:Date.now()});
   }else bw=isBw(n);
-  const reps=num($('#r').value);if(reps==null)return msg('Enter the reps.');
+  const reps=num($('#r').value);if(reps==null)return msg('Enter the reps.');if(reps<=0)return msg('Reps must be greater than 0. Please enter a positive number.');
   const date=$('#date').value,k=(await db.sets.where('[exercise+date]').equals([n,date]).count())+1;
-  await db.sets.add({id:crypto.randomUUID(),date,exercise:n,set:k,weight:bw?null:num($('#w').value),reps,side:$('#side').value,failed:+$('#f').checked,assisted:+$('#a').checked,effort_pct:null,notes:$('#n').value,updated:Date.now()});
+  await db.sets.add({id:crypto.randomUUID(),date,exercise:n,set:k,weight:num($('#w').value),reps,side:$('#side').value,failed:+$('#f').checked,assisted:+$('#a').checked,effort_pct:null,notes:$('#n').value,updated:Date.now()});
   ['f','a'].forEach(i=>$('#'+i).checked=false);$('#n').value='';$('#r').value='';$('#newname').value='';
   msg('Set added.');await loadEx();$('#ex').value=n;list();
 };
@@ -50,7 +52,7 @@ $('#ex').onchange=onEx;$('#newbw').onchange=onEx;$('#date').onchange=list;
 
 const wk=d=>{const t=new Date(d+'T12:00');t.setDate(t.getDate()-(t.getDay()+6)%7);return t.toISOString().slice(0,10)};
 let P=[],sel=-1,rg=0;
-const st=x=>(x.weight!=null?x.weight+'×':'')+x.reps+(x.side?' '+x.side:'')+(x.failed?'✗':'');
+const st=x=>(isBw(x.exercise)&&x.weight!=null?x.reps+' × +'+x.weight:(x.weight!=null?x.weight+'×':'')+x.reps)+(x.side?' '+x.side:'')+(x.failed?'🫠':'');
 const dn=d=>Date.parse(d+'T12:00')/864e5;
 const dl=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
 function chart(){
@@ -104,9 +106,10 @@ async function hist(){
   const by={};s.forEach(x=>((by[x.date]??={})[x.exercise]??=[]).push(x));
   const ds=Object.keys(by).sort().reverse();
   const fmt=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-  $('#hlist').innerHTML=ds.slice(0,hn).map(d=>`<h3>${fmt(d)}</h3>`+Object.entries(by[d]).map(([e,a])=>`<div class="stat"><span>${esc(e)}</span><b>${a.sort((x,y)=>x.set-y.set).map(x=>(x.weight!=null?x.weight+'×':'')+x.reps+(x.side?' '+x.side:'')+(x.failed?'✗':'')).join(', ')}</b></div>`).join('')).join('')||'<p class="hint">No sets yet.</p>';
+  $('#hlist').innerHTML=ds.slice(0,hn).map(d=>`<h3 data-d="${d}">${fmt(d)} ✎</h3>`+Object.entries(by[d]).map(([e,a])=>`<div class="stat"><span>${esc(e)}</span><b>${a.sort((x,y)=>x.set-y.set).map(st).join(', ')}</b></div>`).join('')).join('')||'<p class="hint">No sets yet.</p>';
   $('#more').hidden=ds.length<=hn;
 }
+$('#hlist').onclick=e=>{const d=e.target.dataset.d;if(d){$('#date').value=d;list();document.querySelector('nav button[data-t=log]').click()}};
 $('#hex').onchange=()=>{hn=20;hist()};$('#more').onclick=()=>{hn+=20;hist()};
 
 function parse(t){
@@ -135,12 +138,51 @@ $('#imp').onchange=async e=>{
   await db.sets.bulkAdd(add);e.target.value='';
   await loadEx();await info();$('#info').textContent=`Imported ${add.length} sets (${rows.length-add.length} duplicates skipped).`;
 };
-$('#exp').onclick=async()=>{
+async function backup(share){
   const s=(await db.sets.toArray()).sort((a,b)=>a.date.localeCompare(b.date)||a.updated-b.updated);
   const q=v=>{v=v==null?'':String(v);return/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const csv=[COLS.join(',')].concat(s.map(x=>COLS.map(c=>q(x[c])).join(','))).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='workouts-'+today()+'.csv';a.click();
+  const name='workouts-'+today()+'.csv',f=new File([csv],name,{type:'text/csv'});
+  if(share&&navigator.canShare?.({files:[f]})){try{await navigator.share({files:[f],title:'Workout backup'})}catch(e){return}}
+  else{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=name;a.click()}
+  localStorage.bk_last=today();bk();
+}
+function bk(){
+  const f=+localStorage.bk_f||0,l=localStorage.bk_last,d=l?Math.floor(dn(today())-dn(l)):null,due=f&&(l==null||d>=f);
+  $('#bk').hidden=!due;if(due)$('#bkt').textContent=l?`It has been ${d} days since your last backup.`:'You have not backed up yet.';
+}
+$('#exp').onclick=()=>backup(false);$('#shr').onclick=()=>backup(true);$('#bkb').onclick=()=>backup(true);
+$('#bkf').value=localStorage.bk_f||'0';$('#bkf').onchange=()=>{localStorage.bk_f=$('#bkf').value;bk()};
+async function renameEx(o,n){
+  if(!o||!n||o===n)return;
+  const ex=exs.find(e=>e.name===n);
+  if(ex&&!confirm(`"${n}" already exists. Merge "${o}" into it?`))return;
+  await db.transaction('rw',db.sets,db.exercises,async()=>{
+    await db.sets.where('exercise').equals(o).modify({exercise:n,modified:Date.now()});
+    const old=await db.exercises.get(o);await db.exercises.delete(o);
+    if(!ex)await db.exercises.put({...old,name:n,updated:Date.now()});
+  });
+  $('#rname').value='';await loadEx();$('#ex').value=n;await onEx();await list();
+  $('#info').textContent=$('#msg').textContent=`"${o}" is now "${n}".`;
+}
+$('#ren').onclick=()=>renameEx($('#rex').value,$('#rname').value.trim());
+$('#rn').onclick=async()=>{const o=$('#ex').value,n=prompt(`Rename "${o}" to:`,o);if(n)await renameEx(o,n.trim())};
+
+let eid=null;
+async function openEdit(id){
+  const x=await db.sets.get(id);if(!x)return;eid=id;
+  $('#edt').textContent=x.exercise;$('#edm').textContent='';
+  $('#ed_d').value=x.date;$('#ed_w').value=x.weight??'';$('#ed_r').value=x.reps;$('#ed_s').value=x.side||'';
+  $('#ed_f').checked=!!x.failed;$('#ed_a').checked=!!x.assisted;$('#ed_n').value=x.notes||'';
+  $('#ed').hidden=false;$('#ed').scrollIntoView({behavior:'smooth'});
+}
+$('#ed_x').onclick=()=>{$('#ed').hidden=true;eid=null};
+$('#ed_save').onclick=async()=>{
+  const reps=num($('#ed_r').value),d=$('#ed_d').value;
+  if(reps==null||reps<=0)return $('#edm').textContent='Reps must be greater than 0. Please enter a positive number.';
+  if(!d)return $('#edm').textContent='Pick a date.';
+  await db.sets.update(eid,{date:d,weight:num($('#ed_w').value),reps,side:$('#ed_s').value,failed:+$('#ed_f').checked,assisted:+$('#ed_a').checked,notes:$('#ed_n').value,modified:Date.now()});
+  $('#ed').hidden=true;eid=null;$('#date').value=d;msg('Set updated.');await list();await onEx();
 };
 async function info(){$('#info').textContent=`${await db.sets.count()} sets across ${await db.exercises.count()} exercises stored on this device.`}
 
@@ -149,7 +191,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('main section').forEach(s=>s.hidden=s.id!==b.dataset.t);
   if(b.dataset.t=='hist')hist();if(b.dataset.t=='prog')prog();if(b.dataset.t=='data')info();
 });
-$('#date').value=today();
+$('#date').value=today();bk();
 loadEx().then(list).then(info);
 navigator.storage?.persist?.();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
