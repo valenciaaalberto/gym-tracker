@@ -10,11 +10,15 @@
 <nav><button data-t="log" class="on">Log</button><button data-t="hist">History</button><button data-t="prog">Progress</button><button data-t="data">Data</button></nav>
 <main>
 <section id="log">
+<div id="sm" class="card" hidden><div id="smb"></div><button id="smx" class="big sec">Dismiss</button></div>
 <div id="bk" class="bk" hidden><span id="bkt"></span><button id="bkb">Send backup</button></div>
 <label>Date<input type="date" id="date"></label>
 <label>Exercise<select id="ex"></select></label>
 <p id="last" class="hint"></p>
 <button id="rn" class="link">✎ Rename this exercise</button>
+<label>Muscle group (optional)<select id="mgs"></select></label>
+<div id="mgnw" hidden><input id="mgn" placeholder="New group name"></div>
+<button id="rg" class="link" hidden>✎ Rename this group</button><button id="gd" class="link" hidden>✕ Delete this group</button>
 <div id="newex" hidden><input id="newname" placeholder="New exercise name"><label class="c"><input type="checkbox" id="newbw"> Bodyweight</label></div>
 <div class="row"><label id="wl">Weight (lbs)<input type="number" id="w" step="0.5" inputmode="decimal"></label><label>Reps<input type="number" id="r" step="0.5" inputmode="decimal"></label></div>
 <label>Side<select id="side"><option value="">Both / n.a.</option><option>each</option><option>L</option><option>R</option></select></label>
@@ -41,6 +45,7 @@
 <div id="stats"></div>
 <div id="rng" class="seg"><button data-r="30">1M</button><button data-r="90">3M</button><button data-r="0" class="on">All</button></div>
 <div id="chart"></div><div id="detail"></div>
+<div id="gw" hidden><h3>By muscle group (last 4 weeks)</h3><table id="gwt"></table></div>
 <h3>Weekly volume (lbs × reps)</h3><table id="weeks"></table>
 </section>
 <section id="data" hidden>
@@ -48,6 +53,10 @@
 <label class="file">Import CSV<input type="file" id="imp" accept=".csv,text/csv"></label>
 <button id="shr" class="big">Email / share backup</button><button id="exp" class="big sec">Download CSV</button>
 <label>Backup reminder<select id="bkf"><option value="0">Off</option><option value="7">Weekly</option><option value="14">Every 2 weeks</option><option value="30">Monthly</option></select></label>
+<h3>Weekly summary</h3>
+<label class="c"><input type="checkbox" id="smon"> Show a summary each week</label>
+<label>Week starts on<select id="wsd"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="0">Sunday</option></select></label>
+<button id="smshow" class="big sec">Show last week's summary</button>
 <h3>Rename exercise</h3><label>Exercise<select id="rex"></select></label><label>New name<input id="rname"></label><button id="ren" class="big">Rename</button>
 <p class="hint">Data lives only in this browser. Export regularly.</p>
 </section>
