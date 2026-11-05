@@ -1,6 +1,6 @@
 const $=s=>document.querySelector(s),db=new Dexie('gym');
 db.version(2).stores({sets:'id,date,exercise,[exercise+date],updated',exercises:'name',groups:'name'});
-const COLS=['date','exercise','set','weight','reps','side','failed','assisted','effort_pct','muscle_group','notes'];
+const COLS=['date','exercise','set','weight','reps','side','failed','assisted','assisted_reps','effort_pct','muscle_group','notes'];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>'&#'+c.charCodeAt(0)+';');
 const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const num=v=>v===''||v==null||isNaN(+v)?null:+v;
@@ -34,7 +34,7 @@ async function onEx(){
 }
 async function list(){
   const s=(await db.sets.where('date').equals($('#date').value).toArray()).sort((a,b)=>a.updated-b.updated);
-  $('#list').innerHTML=s.map(x=>`<li><span data-e="${x.id}">${esc(x.exercise)}: ${st(x)}${x.assisted?' (assisted)':''}</span><button data-id="${x.id}" aria-label="Delete set">✕</button></li>`).join('')||'<li>No sets logged for this date yet.</li>';
+  $('#list').innerHTML=s.map(x=>`<li><span data-e="${x.id}">${esc(x.exercise)}: ${st(x)}${x.assisted&&!x.assisted_reps?' (assisted)':''}</span><button data-id="${x.id}" aria-label="Delete set">✕</button></li>`).join('')||'<li>No sets logged for this date yet.</li>';
 }
 $('#list').onclick=async e=>{if(e.target.dataset.e)return openEdit(e.target.dataset.e);const id=e.target.dataset.id;if(id&&confirm('Delete this set?')){await db.sets.delete(id);list()}};
 
@@ -49,9 +49,9 @@ $('#add').onclick=async()=>{
   }else{bw=isBw(n);if((G[n]||'')!==gp)await db.exercises.update(n,{group:gp,updated:Date.now()})}
   if(gp)await db.groups.put({name:gp});
   const reps=r0;
-  const date=$('#date').value,k=(await db.sets.where('[exercise+date]').equals([n,date]).count())+1;
-  await db.sets.add({id:crypto.randomUUID(),date,exercise:n,set:k,weight:num($('#w').value),reps,side:$('#side').value,failed:+$('#f').checked,assisted:+$('#a').checked,effort_pct:null,notes:$('#n').value,updated:Date.now()});
-  ['f','a'].forEach(i=>$('#'+i).checked=false);$('#n').value='';$('#r').value='';$('#newname').value='';$('#mgn').value='';
+  const ar=num($('#ar').value),date=$('#date').value,k=(await db.sets.where('[exercise+date]').equals([n,date]).count())+1;
+  await db.sets.add({id:crypto.randomUUID(),date,exercise:n,set:k,weight:num($('#w').value),reps,side:$('#side').value,failed:+$('#f').checked,assisted:+($('#a').checked||ar>0),assisted_reps:ar>0?ar:null,effort_pct:null,notes:$('#n').value,updated:Date.now()});
+  ['f','a'].forEach(i=>$('#'+i).checked=false);$('#ar').value='';$('#n').value='';$('#r').value='';$('#newname').value='';$('#mgn').value='';
   msg('Set added.');await loadEx();$('#ex').value=n;setMg();await onEx();list();
 };
 $('#ex').onchange=()=>{setMg();onEx()};$('#mgs').onchange=()=>{const v=$('#mgs').value;$('#mgnw').hidden=v!=='__new';gv()};$('#newbw').onchange=onEx;$('#date').onchange=list;
@@ -60,7 +60,7 @@ const wsd=()=>+(localStorage.ws??1);
 const addD=(d,n)=>{const t=new Date(d+'T12:00');t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)};
 const wk=d=>addD(d,-(new Date(d+'T12:00').getDay()-wsd()+7)%7);
 let P=[],sel=-1,rg=0;
-const st=x=>(isBw(x.exercise)&&x.weight!=null?x.reps+' × +'+x.weight:(x.weight!=null?x.weight+'×':'')+x.reps)+(x.side?' '+x.side:'')+(x.failed?'🫠':'');
+const st=x=>(isBw(x.exercise)&&x.weight!=null?x.reps+' × +'+x.weight:(x.weight!=null?x.weight+'×':'')+x.reps)+(x.side?' '+x.side:'')+(x.failed?'🫠':'')+(x.assisted_reps?` (+${x.assisted_reps} assisted)`:'');
 const dn=d=>Date.parse(d+'T12:00')/864e5;
 const dl=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
 function chart(){
@@ -149,7 +149,7 @@ $('#imp').onchange=async e=>{
     if(!o.date||!o.exercise)return;
     all.add(o.exercise);if(o.weight!=='')withW.add(o.exercise);if(o.muscle_group)grp[o.exercise]=o.muscle_group;
     const k=[o.date,o.exercise,+o.set,o.side].join('|');if(have.has(k))return;have.add(k);
-    add.push({id:crypto.randomUUID(),date:o.date,exercise:o.exercise,set:+o.set,weight:num(o.weight),reps:num(o.reps),side:o.side,failed:+o.failed||0,assisted:+o.assisted||0,effort_pct:num(o.effort_pct),notes:o.notes,updated:Date.now()});
+    add.push({id:crypto.randomUUID(),date:o.date,exercise:o.exercise,set:+o.set,weight:num(o.weight),reps:num(o.reps),side:o.side,failed:+o.failed||0,assisted:+o.assisted||(num(o.assisted_reps)>0?1:0),assisted_reps:num(o.assisted_reps)>0?num(o.assisted_reps):null,effort_pct:num(o.effort_pct),notes:o.notes,updated:Date.now()});
   });
   const known=new Set(exs.map(x=>x.name));
   await db.exercises.bulkPut([...all].filter(n=>!known.has(n)).map(n=>({name:n,bodyweight:!withW.has(n),group:grp[n]||'',updated:Date.now()})));
@@ -193,15 +193,15 @@ async function openEdit(id){
   const x=await db.sets.get(id);if(!x)return;eid=id;
   $('#edt').textContent=x.exercise;$('#edm').textContent='';
   $('#ed_d').value=x.date;$('#ed_w').value=x.weight??'';$('#ed_r').value=x.reps;$('#ed_s').value=x.side||'';
-  $('#ed_f').checked=!!x.failed;$('#ed_a').checked=!!x.assisted;$('#ed_n').value=x.notes||'';
+  $('#ed_f').checked=!!x.failed;$('#ed_a').checked=!!x.assisted;$('#ed_ar').value=x.assisted_reps??'';$('#ed_n').value=x.notes||'';
   $('#ed').hidden=false;$('#ed').scrollIntoView({behavior:'smooth'});
 }
 $('#ed_x').onclick=()=>{$('#ed').hidden=true;eid=null};
 $('#ed_save').onclick=async()=>{
-  const reps=num($('#ed_r').value),d=$('#ed_d').value;
+  const reps=num($('#ed_r').value),d=$('#ed_d').value,ar=num($('#ed_ar').value);
   if(reps==null||reps<=0)return $('#edm').textContent='Reps must be greater than 0. Please enter a positive number.';
   if(!d)return $('#edm').textContent='Pick a date.';
-  await db.sets.update(eid,{date:d,weight:num($('#ed_w').value),reps,side:$('#ed_s').value,failed:+$('#ed_f').checked,assisted:+$('#ed_a').checked,notes:$('#ed_n').value,modified:Date.now()});
+  await db.sets.update(eid,{date:d,weight:num($('#ed_w').value),reps,side:$('#ed_s').value,failed:+$('#ed_f').checked,assisted:+($('#ed_a').checked||ar>0),assisted_reps:ar>0?ar:null,notes:$('#ed_n').value,modified:Date.now()});
   $('#ed').hidden=true;eid=null;$('#date').value=d;msg('Set updated.');await list();await onEx();
 };
 const retag=async(r,n)=>db.exercises.bulkPut((await db.exercises.toArray()).filter(x=>x.group===r).map(x=>({...x,group:n,updated:Date.now()})));

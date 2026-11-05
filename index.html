@@ -23,6 +23,7 @@
 <div class="row"><label id="wl">Weight (lbs)<input type="number" id="w" step="0.5" inputmode="decimal"></label><label>Reps<input type="number" id="r" step="0.5" inputmode="decimal"></label></div>
 <label>Side<select id="side"><option value="">Both / n.a.</option><option>each</option><option>L</option><option>R</option></select></label>
 <div class="row"><label class="c"><input type="checkbox" id="f"> Failed last rep</label><label class="c"><input type="checkbox" id="a"> Assisted</label></div>
+<label>Assisted reps (optional)<input type="number" id="ar" step="1" min="0" inputmode="numeric"></label>
 <label>Notes<input id="n"></label>
 <button id="add" class="big">Add set</button>
 <p id="msg"></p>
@@ -32,6 +33,7 @@
 <div class="row"><label>Weight<input type="number" id="ed_w" step="0.5" inputmode="decimal"></label><label>Reps<input type="number" id="ed_r" step="0.5" inputmode="decimal"></label></div>
 <label>Side<select id="ed_s"><option value="">Both / n.a.</option><option>each</option><option>L</option><option>R</option></select></label>
 <div class="row"><label class="c"><input type="checkbox" id="ed_f"> Failed last rep</label><label class="c"><input type="checkbox" id="ed_a"> Assisted</label></div>
+<label>Assisted reps (optional)<input type="number" id="ed_ar" step="1" min="0" inputmode="numeric"></label>
 <label>Notes<input id="ed_n"></label><p id="edm" class="hint"></p>
 <div class="row"><button id="ed_save" class="big">Save</button><button id="ed_x" class="big sec">Cancel</button></div></div>
 </section>
