@@ -13,7 +13,7 @@ async function loadEx(){
   const o=exs.map(e=>`<option>${esc(e.name)}</option>`).join('');
   const cur=$('#ex').value,pc=$('#pex').value;
   $('#ex').innerHTML=o+'<option value="__new">+ New exercise…</option>';
-  $('#pex').innerHTML=o+(grs.length?'<optgroup label="Muscle groups">'+grs.map(g=>`<option value="g:${esc(g)}">${esc(g)} (group)</option>`).join('')+'</optgroup>':'');$('#rex').innerHTML=o;$('#mgs').innerHTML='<option value="">No group</option>'+grs.map(g=>`<option>${esc(g)}</option>`).join('')+'<option value="__new">+ New group…</option>';const hv=$('#hex').value;$('#hex').innerHTML='<option value="">All exercises</option>'+o;$('#hex').value=hv;
+  $('#pex').innerHTML=o+(grs.length?'<optgroup label="Muscle groups">'+grs.map(g=>`<option value="g:${esc(g)}">${esc(g)} (group)</option>`).join('')+'</optgroup>':'');$('#rex').innerHTML=o;$('#mgs').innerHTML='<option value="">No group</option>'+grs.map(g=>`<option>${esc(g)}</option>`).join('')+'<option value="__new">+ New group…</option>';fillH();
   if(cur)$('#ex').value=cur;if(pc)$('#pex').value=pc;
   setMg();await onEx();
 }
@@ -118,17 +118,31 @@ $('#chart').onclick=e=>{const i=e.target.dataset.i;if(i!=null){sel=+i;draw()}};
 $('#rng').onclick=e=>{if(e.target.dataset.r==null)return;rg=+e.target.dataset.r;[...$('#rng').children].forEach(x=>x.classList.toggle('on',x===e.target));sel=-1;draw()};
 $('#pex').onchange=prog;
 
+const inG=(e,g)=>!g||(g==='__none'?!e.group:e.group===g);
+function fillHx(e0){
+  const g=$('#hgr').value,l=exs.filter(e=>inG(e,g));
+  $('#hex').innerHTML=`<option value="">${g?'All in this group':'All exercises'}</option>`+l.map(e=>`<option>${esc(e.name)}</option>`).join('');
+  $('#hex').value=e0||'';if($('#hex').value!==(e0||''))$('#hex').value='';
+}
+function fillH(){
+  const g0=$('#hgr').value,e0=$('#hex').value;
+  $('#hgr').innerHTML='<option value="">All groups</option>'+grs.map(g=>`<option>${esc(g)}</option>`).join('')+'<option value="__none">Untagged</option>';
+  $('#hgr').value=g0;if($('#hgr').value!==g0)$('#hgr').value='';
+  $('#hgl').hidden=!grs.length;fillHx(e0);
+}
 let hn=20;
 async function hist(){
-  const f=$('#hex').value;let s=await db.sets.toArray();if(f)s=s.filter(x=>x.exercise===f);
+  const g=$('#hgr').value,f=$('#hex').value;let s=await db.sets.toArray();
+  if(f)s=s.filter(x=>x.exercise===f);else if(g)s=s.filter(x=>g==='__none'?!G[x.exercise]:G[x.exercise]===g);
   const by={};s.forEach(x=>((by[x.date]??={})[x.exercise]??=[]).push(x));
   const ds=Object.keys(by).sort().reverse();
   const fmt=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-  $('#hlist').innerHTML=ds.slice(0,hn).map(d=>`<h3 data-d="${d}">${fmt(d)} ✎</h3>`+Object.entries(by[d]).map(([e,a])=>`<div class="stat"><span>${esc(e)}</span><b>${a.sort((x,y)=>x.set-y.set).map(st).join(', ')}</b></div>`).join('')).join('')||'<p class="hint">No sets yet.</p>';
+  $('#hlist').innerHTML=ds.slice(0,hn).map(d=>`<h3 data-d="${d}">${fmt(d)} ✎</h3>`+Object.entries(by[d]).map(([e,a])=>`<div class="stat"><span>${esc(e)}</span><b>${a.sort((x,y)=>x.set-y.set).map(st).join(', ')}</b></div>`).join('')).join('')||'<p class="hint">No sets match this filter.</p>';
+  $('#hsum').textContent=`${ds.length} session${ds.length==1?'':'s'} · ${s.length} sets`;
   $('#more').hidden=ds.length<=hn;
 }
 $('#hlist').onclick=e=>{const d=e.target.dataset.d;if(d){$('#date').value=d;list();document.querySelector('nav button[data-t=log]').click()}};
-$('#hex').onchange=()=>{hn=20;hist()};$('#more').onclick=()=>{hn+=20;hist()};
+$('#hgr').onchange=()=>{fillHx('');hn=20;hist()};$('#hex').onchange=()=>{hn=20;hist()};$('#more').onclick=()=>{hn+=20;hist()};
 
 function parse(t){
   const r=[];let row=[],c='',q=0;
